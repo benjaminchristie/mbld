@@ -8,6 +8,11 @@ int main(int argc, char** argv) {
         return 1;
     }
     clearScreen();
-    game(atoi(argv[1]));
+    uint32_t n_cubes = atoi(argv[1]);
+    if (n_cubes == 0 || n_cubes > 100000) {
+        printf("$n must be in the range [1, 100000].\n");
+        return 2;
+    }
+    game(n_cubes);
     return 0;
 }

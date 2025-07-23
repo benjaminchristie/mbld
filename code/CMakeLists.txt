@@ -9,4 +9,4 @@ add_executable(main
     src/mbld.c
 )
 target_include_directories(main PUBLIC include)
-target_compile_options(main PUBLIC -Wall -Werror -Wpedantic -O0 -ggdb3 -fomit-frame-pointer -march=native)
+target_compile_options(main PUBLIC -Wall -Werror -Wpedantic -O3 -fomit-frame-pointer -march=native)

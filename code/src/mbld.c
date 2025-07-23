@@ -7,7 +7,7 @@
 static const float corner_cdf[max_c - min_c] = {
     0.05, // 4
     0.15, // 5
-    0.45, // 6
+    0.35, // 6
     0.70, // 7
     0.85, // 8
     0.95, // 9
@@ -181,11 +181,12 @@ void _displayCorners(Cube *c) {
 }
 
 void displayCube(Cubes *c, uint32_t i) {
-  printf("%d/%d   [s: solve, [b, \\b]: back, [n, \\n]: next, Esc: end]", i + 1, c->n);
+  printf(" %d/%d   [s: solve, b/k: back, n/j: next, e: jump, Esc: end]", i + 1,
+         c->n);
   printf("\n------\n\n");
-  printf("Edges: ");
+  printf("E: ");
   _displayEdges(c->data[i]);
-  printf("\nCorners: ");
+  printf("\nC: ");
   _displayCorners(c->data[i]);
   printf("\n"); // so cursor is on the line below
 }
@@ -234,13 +235,18 @@ bool game(uint32_t n_cubes) {
   while (!begin_solve && (c = getchar()) != 27) {
     switch (c) {
     case '\n':
+    case 'N':
+    case ' ':
+    case 'j':
     case 'n':
       screen_idx = (screen_idx + 1) % n_cubes;
       clearScreen();
       break;
     case 8:
     case 127:
+    case 'B':
     case 'b':
+    case 'k':
       if (screen_idx == 0) {
         screen_idx = n_cubes - 1;
       } else {
@@ -248,16 +254,30 @@ bool game(uint32_t n_cubes) {
       }
       clearScreen();
       break;
+    case 'R':
     case 'r':
       screen_idx = 0;
       clearScreen();
       break;
+    case 'S':
     case 's':
       // we are now solving
       screen_idx = 0;
       clearScreen();
       begin_solve = true;
       break;
+    // case 'e':
+      // jump to a position
+      // tcsetattr(STDIN_FILENO, TCSANOW, &old_settings);
+      // printf("\n\n\nEnter cube #: ");
+      // int number;
+      // scanf("%d", &number);
+      // if (number >= 1 && number <= n_cubes) {
+        // screen_idx = number - 1;
+      // }
+      // clearScreen();
+      // tcsetattr(STDIN_FILENO, TCSANOW, &new_settings);
+      // break;
     default:
       clearScreen();
     }
@@ -280,7 +300,7 @@ bool game(uint32_t n_cubes) {
       char toprint;
       printf("%d/%d", i + 1, n_cubes);
       printf("\n------\n\n");
-      printf("Edges: ");
+      printf("E: ");
       while ((c = getchar()) != 27) {
         if (on_edges) {
           if ((toprint = input_in_edges(c))) {
@@ -293,7 +313,7 @@ bool game(uint32_t n_cubes) {
           } else if (c == '\n') {
             on_edges = false;
             idx = 0;
-            printf("\nCorners: ");
+            printf("\nC: ");
           }
         } else {
           if ((toprint = input_in_corners(c))) {
@@ -322,34 +342,30 @@ bool game(uint32_t n_cubes) {
       printf("------\n");
       printf("%d/%d", i + 1, n_cubes);
       printf("\n------\n\n");
-      printf("Edges: \n");
+      printf("E: \n");
       _displayEdges(cube);
       printf("\n");
       for (size_t j = 0; j < sz_edges; j++) {
         if (j % 2 == 0 && j != 0) {
           printf(" ");
         }
-        if (j >= sz_edges_src) {
+        if (j >= sz_edges_src || cube->edges[j] != entries[2 * i][j]) {
           printColChar(entries[2 * i][j], Red);
-        } else if (cube->edges[j] == entries[2 * i][j]) {
-          printColChar(entries[2 * i][j], Green);
         } else {
-          printColChar(entries[2 * i][j], Red);
+          printColChar(entries[2 * i][j], Green);
         }
       }
-      printf("\n\nCorners: \n");
+      printf("\n\nC: \n");
       _displayCorners(cube);
       printf("\n");
       for (size_t j = 0; j < sz_corns; j++) {
         if (j % 2 == 0 && j != 0) {
           printf(" ");
         }
-        if (j >= sz_corns_src) {
+        if (j >= sz_corns_src || cube->corners[j] != entries[2 * i + 1][j]) {
           printColChar(entries[2 * i + 1][j], Red);
-        } else if (cube->corners[j] == entries[2 * i + 1][j]) {
-          printColChar(entries[2 * i + 1][j], Green);
         } else {
-          printColChar(entries[2 * i + 1][j], Red);
+          printColChar(entries[2 * i + 1][j], Green);
         }
       }
       printf("\n\n");
