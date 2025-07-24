@@ -30,8 +30,10 @@ typedef struct {
 
 bool isGameStateSolving(GameState* gs);
 bool isGameStateMemoing(GameState* gs);
+bool isGameStateExecuting(GameState* gs);
 void setGameStateSolving(GameState* gs);
 void setGameStateMemoing(GameState* gs);
+void setGameStateExecuting(GameState* gs);
 
 GameState* allocateGameState(Cubes* cubes);
 void deallocateGameState(GameState* gs);

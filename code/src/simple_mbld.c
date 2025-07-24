@@ -221,6 +221,7 @@ bool isGameStateSolving(GameState *gs) { return (gs->flags & 1) == 1; }
 
 bool isGameStateExecuting(GameState *gs) { return ((gs->flags >> 1) & 1) == 1; }
 void setGameStateExecuting(GameState *gs) {
+  // note that this also sets solving to true
   gs->flags = gs->flags | ~(~(uint32_t)1 << 1);
 }
 
@@ -367,7 +368,6 @@ void decrementGameStateScreen(GameState *gs) {
 void zeroGameStateScreen(GameState *gs) { gs->screen_idx = 0; }
 
 bool game(uint32_t n_cubes) {
-
   Cubes *cubes = scramble(n_cubes);
   GameState *state = allocateGameState(cubes);
   char c;
@@ -411,5 +411,5 @@ bool game(uint32_t n_cubes) {
   displayGame(state); // may lead to exec step
   deallocateGameState(state);
   freeCubes(cubes);
-  return false;
+  return 0;
 }
