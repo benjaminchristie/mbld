@@ -20,6 +20,22 @@ typedef struct {
   uint32_t n;
 } Cubes;
 
+typedef struct {
+  Cubes* cubes;
+  uint16_t flags;
+  uint16_t screen_idx;
+  struct termios old_settings;
+  struct termios new_settings;
+} GameState;
+
+bool isGameStateSolving(GameState* gs);
+bool isGameStateMemoing(GameState* gs);
+void setGameStateSolving(GameState* gs);
+void setGameStateMemoing(GameState* gs);
+
+GameState* allocateGameState(Cubes* cubes);
+void deallocateGameState(GameState* gs);
+
 void printColChar(char c, enum Color col);
 void clearScreen(void);
 void handleInput(char c);
@@ -30,6 +46,7 @@ Cubes *scramble(uint32_t n);
 void freeCubes(Cubes *ptr);
 
 
-void displayCube(Cubes* c, uint32_t i);
+void _displayCube(Cubes* c, uint32_t i);
+void displayGame(GameState* gs);
 
 bool game(uint32_t n);

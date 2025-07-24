@@ -180,7 +180,7 @@ void _displayCorners(Cube *c) {
   }
 }
 
-void displayCube(Cubes *c, uint32_t i) {
+void _displayCube(Cubes *c, uint32_t i) {
   printf(" %d/%d   [s: solve, b/k: back, n/j: next, e: jump, Esc: end]", i + 1,
          c->n);
   printf("\n------\n\n");
@@ -215,85 +215,60 @@ char input_in_corners(char c) {
   return 0;
 }
 
-bool game(uint32_t n_cubes) {
-  struct termios old_settings, new_settings;
+bool isGameStateMemoing(GameState *gs) { return (gs->flags & 1) == 0; }
 
+bool isGameStateSolving(GameState *gs) { return (gs->flags & 1) == 1; }
+
+bool isGameStateExecuting(GameState *gs) { return ((gs->flags >> 1) & 1) == 1; }
+void setGameStateExecuting(GameState *gs) {
+  gs->flags = gs->flags | ~(~(uint32_t)1 << 1);
+}
+
+void setGameStateMemoing(GameState *gs) {
+  gs->flags = gs->flags & ~((uint32_t)1 << 0);
+}
+
+void setGameStateSolving(GameState *gs) { gs->flags = gs->flags | 1; }
+
+GameState *allocateGameState(Cubes *cubes) {
+  GameState *gs;
+  struct termios old_settings, new_settings;
+  if ((gs = malloc(sizeof(GameState))) == NULL) {
+    return NULL;
+  }
   // Get current terminal settings
   tcgetattr(STDIN_FILENO, &old_settings);
-
   // Modify settings for non-echoing input
   new_settings = old_settings;
   new_settings.c_lflag &=
       ~(ICANON | ECHO); // Disable canonical mode and echoing
   tcsetattr(STDIN_FILENO, TCSANOW, &new_settings);
 
-  Cubes *cubes = scramble(n_cubes);
-  uint32_t screen_idx = 0;
-  char c;
-  displayCube(cubes, screen_idx);
-  bool begin_solve = false;
-  while (!begin_solve && (c = getchar()) != 27) {
-    switch (c) {
-    case '\n':
-    case 'N':
-    case ' ':
-    case 'j':
-    case 'n':
-      screen_idx = (screen_idx + 1) % n_cubes;
-      clearScreen();
-      break;
-    case 8:
-    case 127:
-    case 'B':
-    case 'b':
-    case 'k':
-      if (screen_idx == 0) {
-        screen_idx = n_cubes - 1;
-      } else {
-        screen_idx = (screen_idx - 1) % n_cubes;
-      }
-      clearScreen();
-      break;
-    case 'R':
-    case 'r':
-      screen_idx = 0;
-      clearScreen();
-      break;
-    case 'S':
-    case 's':
-      // we are now solving
-      screen_idx = 0;
-      clearScreen();
-      begin_solve = true;
-      break;
-    // case 'e':
-      // jump to a position
-      // tcsetattr(STDIN_FILENO, TCSANOW, &old_settings);
-      // printf("\n\n\nEnter cube #: ");
-      // int number;
-      // scanf("%d", &number);
-      // if (number >= 1 && number <= n_cubes) {
-        // screen_idx = number - 1;
-      // }
-      // clearScreen();
-      // tcsetattr(STDIN_FILENO, TCSANOW, &new_settings);
-      // break;
-    default:
-      clearScreen();
+  gs->cubes = cubes;
+  gs->flags = 0;
+  gs->screen_idx = 0;
+  gs->old_settings = old_settings;
+  gs->new_settings = new_settings;
+  return gs;
+}
+
+void deallocateGameState(GameState *gs) {
+  tcsetattr(STDIN_FILENO, TCSANOW, &gs->old_settings);
+  free(gs);
+}
+
+void displayGame(GameState *gs) {
+  if (isGameStateMemoing(gs)) {
+    _displayCube(gs->cubes, gs->screen_idx);
+  } else if (isGameStateExecuting(gs)) {
+    // is solving
+    char c;
+    Cubes *cubes = gs->cubes;
+    uint32_t n_cubes = cubes->n;
+    char entries[2 * n_cubes][32];
+    for (size_t i = 0; i < 2 * n_cubes; i++) {
+      memset(entries[i], 0, 32);
     }
-    if (!begin_solve) {
-      displayCube(cubes, screen_idx);
-    }
-  }
-
-  clearScreen();
-
-  char entries[2 * n_cubes][32];
-  for (size_t i = 0; i < 2 * n_cubes; i++) {
-    memset(entries[i], 0, 32);
-  }
-
-  if (begin_solve) {
     for (uint32_t i = 0; i < n_cubes; i++) {
       bool on_edges = true; // note that when this is false, on_corners == true
       uint8_t idx = 0;
@@ -370,10 +345,71 @@ bool game(uint32_t n_cubes) {
       }
       printf("\n\n");
     }
+  } 
+  else {
+    printf("Goodbye.\n");
   }
-  freeCubes(cubes);
-  // Restore original terminal settings
-  tcsetattr(STDIN_FILENO, TCSANOW, &old_settings);
+}
 
+void incrementGameStateScreen(GameState *gs) {
+  gs->screen_idx = (gs->screen_idx + 1) % gs->cubes->n;
+}
+
+void decrementGameStateScreen(GameState *gs) {
+  uint32_t n_cubes = gs->cubes->n;
+  if (gs->screen_idx == 0) {
+    gs->screen_idx = n_cubes - 1;
+  } else {
+    gs->screen_idx = (gs->screen_idx - 1) % n_cubes;
+  }
+}
+
+void zeroGameStateScreen(GameState *gs) { gs->screen_idx = 0; }
+
+bool game(uint32_t n_cubes) {
+
+  Cubes *cubes = scramble(n_cubes);
+  GameState *state = allocateGameState(cubes);
+  char c;
+  displayGame(state);
+  while (isGameStateMemoing(state) && (c = getchar()) != 27) {
+    switch (c) {
+    case '\n':
+    case 'N':
+    case ' ':
+    case 'j':
+    case 'n':
+      incrementGameStateScreen(state);
+      clearScreen();
+      break;
+    case 8:
+    case 127:
+    case 'B':
+    case 'b':
+    case 'k':
+      decrementGameStateScreen(state);
+      clearScreen();
+      break;
+    case 'S':
+    case 's':
+      // we are now solving, this breaks out of the while loop
+      setGameStateExecuting(state);
+    case 'R':
+    case 'r':
+      zeroGameStateScreen(state);
+      clearScreen();
+      break;
+    default:
+      clearScreen();
+    }
+    if (isGameStateMemoing(state)) {
+      displayGame(state);
+    }
+  }
+  setGameStateSolving(state);
+  clearScreen();
+  displayGame(state); // may lead to exec step
+  deallocateGameState(state);
+  freeCubes(cubes);
   return false;
 }
